@@ -22,8 +22,9 @@ Accepted flags:
 
 Logs go to stdout; set verbosity via `RUST_LOG=info` / `debug`.
 
-Shut down with `Ctrl-C` or `SIGTERM`. The current tick is allowed up to 10 s to
-finish before the process exits.
+Shut down with `Ctrl-C` or `SIGTERM`. If a tick is in flight when a signal is
+received, the recorder waits for it to complete (up to the HTTP fetch timeout
+of ~30 s) before exiting.
 
 ## Inspect
 

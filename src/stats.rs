@@ -51,8 +51,8 @@ fn dir_size(path: &Path) -> Result<u64> {
             let ft = match entry.file_type() { Ok(t) => t, Err(_) => continue };
             if ft.is_dir() {
                 stack.push(entry.path());
-            } else if ft.is_file() {
-                if let Ok(md) = entry.metadata() { total += md.len(); }
+            } else if ft.is_file() && let Ok(md) = entry.metadata() {
+                total += md.len();
             }
         }
     }
