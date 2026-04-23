@@ -3,7 +3,7 @@
 use chrono::{TimeZone, Utc};
 use httpmock::prelude::*;
 use tempfile::tempdir;
-use vatsim_recorder::{db, fetcher::Fetcher, vatsim::DataFeed, writer};
+use vatsim_recorder::{db, fetcher::Fetcher, writer};
 
 const FIXTURE: &str = include_str!("fixtures/vatsim-data.json");
 
@@ -45,8 +45,10 @@ async fn fetch_then_write_then_query() {
     ).unwrap();
     assert!(matches!(outcome, writer::WriteOutcome::Written { pilots: 2, controllers: 1 }));
 
-    let feed: DataFeed = serde_json::from_str(FIXTURE).unwrap();
-    assert_eq!(feed.general.update_timestamp, "2026-04-21T12:00:00.0000000Z");
+    assert_eq!(
+        fetch.feed.general.update_timestamp,
+        "2026-04-21T12:00:00.0000000Z"
+    );
 
     let pilot_rows: i64 = conn
         .query_row("SELECT COUNT(*) FROM positions", [], |r| r.get(0))
