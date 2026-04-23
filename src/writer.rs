@@ -1,12 +1,13 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, params};
+use std::collections::HashMap;
 use std::path::Path;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::flight_plan_hash;
 use crate::raw_store::{self, Suffix};
-use crate::vatsim::{DataFeed, FlightPlan};
+use crate::vatsim::{Controller, DataFeed, FlightPlan, Pilot};
 
 /// Outcome of a single write pass. `Written` = new data was persisted.
 /// `DuplicateApiUpdate` = the feed's `update_timestamp` matched the most
@@ -30,6 +31,12 @@ pub fn write(
         return Ok(WriteOutcome::DuplicateApiUpdate);
     }
 
+    // VATSIM occasionally returns the same CID twice in one snapshot (multi-connection
+    // or ghost entries). The `positions`/`controllers` tables have PK (fetch_ts, cid),
+    // so we keep one row per cid — the entry with the latest `last_updated`.
+    let pilots = dedupe_pilots(&feed.pilots);
+    let controllers = dedupe_controllers(&feed.controllers);
+
     let rel = raw_store::write_snapshot(data_dir, fetch_ts, raw_body, Suffix::Ok)
         .context("raw_store write")?;
     let rel_str = rel.to_string_lossy().into_owned();
@@ -43,13 +50,13 @@ pub fn write(
             fetch_ts_str,
             feed.general.update_timestamp,
             rel_str,
-            feed.pilots.len() as i64,
-            feed.controllers.len() as i64,
+            pilots.len() as i64,
+            controllers.len() as i64,
             fetch_duration_ms,
         ],
     )?;
 
-    for pilot in &feed.pilots {
+    for pilot in &pilots {
         let fp_hash = pilot.flight_plan.as_ref().map(flight_plan_hash::hash);
         if let (Some(plan), Some(h)) = (&pilot.flight_plan, fp_hash.as_ref()) {
             insert_flight_plan(&tx, h, plan)?;
@@ -77,7 +84,7 @@ pub fn write(
         )?;
     }
 
-    for ctrl in &feed.controllers {
+    for ctrl in &controllers {
         let atis_json = ctrl
             .text_atis
             .as_ref()
@@ -103,9 +110,77 @@ pub fn write(
 
     tx.commit()?;
     Ok(WriteOutcome::Written {
-        pilots: feed.pilots.len(),
-        controllers: feed.controllers.len(),
+        pilots: pilots.len(),
+        controllers: controllers.len(),
     })
+}
+
+fn dedupe_pilots(pilots: &[Pilot]) -> Vec<&Pilot> {
+    let mut winner: HashMap<i64, usize> = HashMap::with_capacity(pilots.len());
+    for (i, p) in pilots.iter().enumerate() {
+        match winner.get(&p.cid).copied() {
+            Some(j) if pilots[j].last_updated >= p.last_updated => {
+                warn!(
+                    cid = p.cid,
+                    kept_callsign = %pilots[j].callsign,
+                    dropped_callsign = %p.callsign,
+                    "duplicate pilot cid in feed; dropping older entry",
+                );
+            }
+            Some(j) => {
+                warn!(
+                    cid = p.cid,
+                    kept_callsign = %p.callsign,
+                    dropped_callsign = %pilots[j].callsign,
+                    "duplicate pilot cid in feed; dropping older entry",
+                );
+                winner.insert(p.cid, i);
+            }
+            None => {
+                winner.insert(p.cid, i);
+            }
+        }
+    }
+    pilots
+        .iter()
+        .enumerate()
+        .filter(|(i, p)| winner.get(&p.cid).copied() == Some(*i))
+        .map(|(_, p)| p)
+        .collect()
+}
+
+fn dedupe_controllers(controllers: &[Controller]) -> Vec<&Controller> {
+    let mut winner: HashMap<i64, usize> = HashMap::with_capacity(controllers.len());
+    for (i, c) in controllers.iter().enumerate() {
+        match winner.get(&c.cid).copied() {
+            Some(j) if controllers[j].last_updated >= c.last_updated => {
+                warn!(
+                    cid = c.cid,
+                    kept_callsign = %controllers[j].callsign,
+                    dropped_callsign = %c.callsign,
+                    "duplicate controller cid in feed; dropping older entry",
+                );
+            }
+            Some(j) => {
+                warn!(
+                    cid = c.cid,
+                    kept_callsign = %c.callsign,
+                    dropped_callsign = %controllers[j].callsign,
+                    "duplicate controller cid in feed; dropping older entry",
+                );
+                winner.insert(c.cid, i);
+            }
+            None => {
+                winner.insert(c.cid, i);
+            }
+        }
+    }
+    controllers
+        .iter()
+        .enumerate()
+        .filter(|(i, c)| winner.get(&c.cid).copied() == Some(*i))
+        .map(|(_, c)| c)
+        .collect()
 }
 
 fn is_duplicate_api_update(conn: &Connection, api_update: &str) -> Result<bool> {
@@ -228,6 +303,66 @@ mod tests {
             1,
             "duplicate tick must not write a second raw file"
         );
+    }
+
+    #[test]
+    fn dedupes_duplicate_cid_within_single_snapshot() {
+        let dir = tempdir().unwrap();
+        let data_dir = dir.path();
+        let db_path = data_dir.join("recorder.db");
+        let mut conn = crate::db::open(&db_path).unwrap();
+
+        let mut feed: DataFeed = serde_json::from_str(FIXTURE).unwrap();
+        // Clone the first pilot (cid 1234567, "AAL123") and keep the same cid,
+        // but give it a newer last_updated and a different callsign so we can
+        // tell which row survived.
+        let mut twin = feed.pilots[0].clone();
+        twin.callsign = "DUPE".to_string();
+        twin.last_updated = "2099-01-01T00:00:00.0000000Z".to_string();
+        feed.pilots.push(twin);
+
+        let ts = Utc.with_ymd_and_hms(2026, 4, 21, 12, 0, 0).unwrap();
+        let outcome =
+            write(&mut conn, data_dir, ts, 42, FIXTURE.as_bytes(), &feed).unwrap();
+        assert_eq!(
+            outcome,
+            WriteOutcome::Written {
+                pilots: 2,
+                controllers: 1,
+            },
+            "duplicate cid must collapse to one row, not abort the tick",
+        );
+
+        let rows_for_cid: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM positions WHERE cid = 1234567",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(rows_for_cid, 1);
+
+        let surviving_callsign: String = conn
+            .query_row(
+                "SELECT callsign FROM positions WHERE cid = 1234567",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            surviving_callsign, "DUPE",
+            "later last_updated should win",
+        );
+
+        let (pilot_count, controller_count): (i64, i64) = conn
+            .query_row(
+                "SELECT pilot_count, controller_count FROM fetches",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(pilot_count, 2);
+        assert_eq!(controller_count, 1);
     }
 
     fn walkdir_json_gz(root: &std::path::Path) -> Vec<std::path::PathBuf> {
