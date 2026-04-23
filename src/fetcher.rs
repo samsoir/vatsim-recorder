@@ -90,7 +90,11 @@ impl Fetcher {
 }
 
 async fn fetch_status(client: &Client, url: &str) -> Result<Vec<String>> {
-    let doc: StatusDoc = client.get(url).send().await?.error_for_status()?.json().await?;
+    let doc: StatusDoc = client
+        .get(url)
+        .send().await.context("status http get")?
+        .error_for_status().context("status non-2xx")?
+        .json().await.context("status json parse")?;
     Ok(doc.data.v3)
 }
 
