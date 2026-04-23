@@ -45,7 +45,10 @@ impl Fetcher {
 
         let data_urls = match fetch_status(&client, status_url).await {
             Ok(urls) if !urls.is_empty() => {
-                info!(count = urls.len(), "resolved data URLs from status endpoint");
+                info!(
+                    count = urls.len(),
+                    "resolved data URLs from status endpoint"
+                );
                 urls
             }
             Ok(_) => {
@@ -58,7 +61,11 @@ impl Fetcher {
             }
         };
 
-        Ok(Self { client, data_urls, next_idx: 0 })
+        Ok(Self {
+            client,
+            data_urls,
+            next_idx: 0,
+        })
     }
 
     /// Fetch a single snapshot. Tries each known data URL in round-robin
@@ -92,14 +99,24 @@ impl Fetcher {
 async fn fetch_status(client: &Client, url: &str) -> Result<Vec<String>> {
     let doc: StatusDoc = client
         .get(url)
-        .send().await.context("status http get")?
-        .error_for_status().context("status non-2xx")?
-        .json().await.context("status json parse")?;
+        .send()
+        .await
+        .context("status http get")?
+        .error_for_status()
+        .context("status non-2xx")?
+        .json()
+        .await
+        .context("status json parse")?;
     Ok(doc.data.v3)
 }
 
 async fn fetch_data(client: &Client, url: &str) -> Result<(Vec<u8>, DataFeed)> {
-    let resp = client.get(url).send().await.context("http get")?.error_for_status()?;
+    let resp = client
+        .get(url)
+        .send()
+        .await
+        .context("http get")?
+        .error_for_status()?;
     let raw = resp.bytes().await.context("read body")?.to_vec();
     let feed: DataFeed = serde_json::from_slice(&raw).context("parse json")?;
     Ok((raw, feed))
@@ -115,26 +132,32 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn uses_status_endpoint_when_available() {
         let server = MockServer::start_async().await;
-        let status_mock = server.mock_async(|when, then| {
-            when.method(GET).path("/status.json");
-            then.status(200)
-                .header("content-type", "application/json")
-                .body(r#"{"data":{"v3":["URL_PLACEHOLDER"]}}"#.replace(
-                    "URL_PLACEHOLDER",
-                    &format!("{}/data.json", server.base_url()),
-                ));
-        }).await;
-        let data_mock = server.mock_async(|when, then| {
-            when.method(GET).path("/data.json");
-            then.status(200)
-                .header("content-type", "application/json")
-                .body(FIXTURE);
-        }).await;
+        let status_mock = server
+            .mock_async(|when, then| {
+                when.method(GET).path("/status.json");
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body(r#"{"data":{"v3":["URL_PLACEHOLDER"]}}"#.replace(
+                        "URL_PLACEHOLDER",
+                        &format!("{}/data.json", server.base_url()),
+                    ));
+            })
+            .await;
+        let data_mock = server
+            .mock_async(|when, then| {
+                when.method(GET).path("/data.json");
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body(FIXTURE);
+            })
+            .await;
 
         let mut fetcher = Fetcher::new(
             &format!("{}/status.json", server.base_url()),
             "http://unused.example/",
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
         let fetched = fetcher.fetch_once().await.unwrap();
 
         status_mock.assert_async().await;
@@ -145,17 +168,21 @@ mod tests {
     #[tokio::test(flavor = "current_thread")]
     async fn falls_back_when_status_fails() {
         let server = MockServer::start_async().await;
-        let data_mock = server.mock_async(|when, then| {
-            when.method(GET).path("/data.json");
-            then.status(200)
-                .header("content-type", "application/json")
-                .body(FIXTURE);
-        }).await;
+        let data_mock = server
+            .mock_async(|when, then| {
+                when.method(GET).path("/data.json");
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body(FIXTURE);
+            })
+            .await;
 
         let mut fetcher = Fetcher::new(
             "http://127.0.0.1:1/status.json", // unreachable
             &format!("{}/data.json", server.base_url()),
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
         let fetched = fetcher.fetch_once().await.unwrap();
         data_mock.assert_async().await;
         assert_eq!(fetched.feed.controllers.len(), 1);

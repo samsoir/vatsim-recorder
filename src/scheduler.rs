@@ -75,14 +75,18 @@ async fn one_tick(
             // inspector sees a distinctive filename near the failure. In the DB-failure
             // sub-case this produces a second file for the same fetch_ts alongside
             // the existing `.json.gz` — intentional; no data is lost.
-            let _ = raw_store::write_snapshot(data_dir, fetch.fetch_ts, &fetch.raw, Suffix::ParseError);
+            let _ =
+                raw_store::write_snapshot(data_dir, fetch.fetch_ts, &fetch.raw, Suffix::ParseError);
             error!(error = %e, "writer failed");
             return Ok(());
         }
     };
 
     match outcome {
-        WriteOutcome::Written { pilots, controllers } => info!(
+        WriteOutcome::Written {
+            pilots,
+            controllers,
+        } => info!(
             pilots,
             controllers,
             fetch_ms = fetch.duration_ms,
@@ -99,7 +103,9 @@ async fn one_tick(
 /// Seconds from `now` until the next UTC boundary evenly divisible by `interval_secs`.
 /// Returns 0 when `interval_secs` is 0 (guard; scheduler never passes 0).
 pub fn secs_until_next_boundary(now: DateTime<Utc>, interval_secs: u64) -> u64 {
-    if interval_secs == 0 { return 0; }
+    if interval_secs == 0 {
+        return 0;
+    }
     let seconds_since_epoch = now.timestamp() as u64;
     let nanos_remainder = now.nanosecond() as u64;
     let mod_now = seconds_since_epoch % interval_secs;

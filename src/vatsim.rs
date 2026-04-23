@@ -70,14 +70,22 @@ mod tests {
     #[test]
     fn parses_fixture() {
         let feed: DataFeed = serde_json::from_str(FIXTURE).expect("parse fixture");
-        assert_eq!(feed.general.update_timestamp, "2026-04-21T12:00:00.0000000Z");
+        assert_eq!(
+            feed.general.update_timestamp,
+            "2026-04-21T12:00:00.0000000Z"
+        );
         assert_eq!(feed.pilots.len(), 2);
         assert_eq!(feed.controllers.len(), 1);
         assert_eq!(feed.pilots[0].callsign, "AAL123");
         assert!(feed.pilots[0].flight_plan.is_some());
         assert!(feed.pilots[1].flight_plan.is_none());
         assert_eq!(
-            feed.pilots[0].flight_plan.as_ref().unwrap().departure.as_deref(),
+            feed.pilots[0]
+                .flight_plan
+                .as_ref()
+                .unwrap()
+                .departure
+                .as_deref(),
             Some("KJFK")
         );
     }

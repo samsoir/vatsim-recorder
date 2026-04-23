@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 
 pub async fn run(data_dir: PathBuf) -> Result<()> {
     let db_path = data_dir.join("recorder.db");
-    let conn = Connection::open(&db_path)
-        .with_context(|| format!("open db {}", db_path.display()))?;
+    let conn =
+        Connection::open(&db_path).with_context(|| format!("open db {}", db_path.display()))?;
     let report = collect(&conn, &data_dir)?;
     print!("{}", render(&report));
     Ok(())
@@ -31,12 +31,25 @@ pub fn collect(conn: &Connection, data_dir: &Path) -> Result<Report> {
         .query_row("SELECT MAX(fetch_ts) FROM fetches", [], |r| r.get(0))
         .ok()
         .flatten();
-    let peak_pilots: i64 = conn
-        .query_row("SELECT COALESCE(MAX(pilot_count), 0) FROM fetches", [], |r| r.get(0))?;
-    let peak_controllers: i64 = conn
-        .query_row("SELECT COALESCE(MAX(controller_count), 0) FROM fetches", [], |r| r.get(0))?;
+    let peak_pilots: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(pilot_count), 0) FROM fetches",
+        [],
+        |r| r.get(0),
+    )?;
+    let peak_controllers: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(controller_count), 0) FROM fetches",
+        [],
+        |r| r.get(0),
+    )?;
     let disk_bytes = dir_size(data_dir)?;
-    Ok(Report { fetches, first_ts, last_ts, peak_pilots, peak_controllers, disk_bytes })
+    Ok(Report {
+        fetches,
+        first_ts,
+        last_ts,
+        peak_pilots,
+        peak_controllers,
+        disk_bytes,
+    })
 }
 
 fn dir_size(path: &Path) -> Result<u64> {
@@ -48,10 +61,15 @@ fn dir_size(path: &Path) -> Result<u64> {
             Err(_) => continue,
         };
         for entry in entries.flatten() {
-            let ft = match entry.file_type() { Ok(t) => t, Err(_) => continue };
+            let ft = match entry.file_type() {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
             if ft.is_dir() {
                 stack.push(entry.path());
-            } else if ft.is_file() && let Ok(md) = entry.metadata() {
+            } else if ft.is_file()
+                && let Ok(md) = entry.metadata()
+            {
                 total += md.len();
             }
         }

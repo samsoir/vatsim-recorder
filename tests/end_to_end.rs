@@ -10,21 +10,25 @@ const FIXTURE: &str = include_str!("fixtures/vatsim-data.json");
 #[tokio::test(flavor = "current_thread")]
 async fn fetch_then_write_then_query() {
     let server = MockServer::start_async().await;
-    server.mock_async(|when, then| {
-        when.method(GET).path("/status.json");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(
-                r#"{"data":{"v3":["__DATA__"]}}"#
-                    .replace("__DATA__", &format!("{}/data.json", server.base_url())),
-            );
-    }).await;
-    server.mock_async(|when, then| {
-        when.method(GET).path("/data.json");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(FIXTURE);
-    }).await;
+    server
+        .mock_async(|when, then| {
+            when.method(GET).path("/status.json");
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(
+                    r#"{"data":{"v3":["__DATA__"]}}"#
+                        .replace("__DATA__", &format!("{}/data.json", server.base_url())),
+                );
+        })
+        .await;
+    server
+        .mock_async(|when, then| {
+            when.method(GET).path("/data.json");
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(FIXTURE);
+        })
+        .await;
 
     let dir = tempdir().unwrap();
     let db_path = dir.path().join("recorder.db");
@@ -32,7 +36,9 @@ async fn fetch_then_write_then_query() {
     let mut fetcher = Fetcher::new(
         &format!("{}/status.json", server.base_url()),
         "http://unused.example/",
-    ).await.unwrap();
+    )
+    .await
+    .unwrap();
 
     let fetch = fetcher.fetch_once().await.unwrap();
     let outcome = writer::write(
@@ -42,8 +48,15 @@ async fn fetch_then_write_then_query() {
         fetch.duration_ms,
         &fetch.raw,
         &fetch.feed,
-    ).unwrap();
-    assert!(matches!(outcome, writer::WriteOutcome::Written { pilots: 2, controllers: 1 }));
+    )
+    .unwrap();
+    assert!(matches!(
+        outcome,
+        writer::WriteOutcome::Written {
+            pilots: 2,
+            controllers: 1
+        }
+    ));
 
     assert_eq!(
         fetch.feed.general.update_timestamp,

@@ -78,7 +78,10 @@ pub fn write(
     }
 
     for ctrl in &feed.controllers {
-        let atis_json = ctrl.text_atis.as_ref().map(|v| serde_json::to_string(v).unwrap());
+        let atis_json = ctrl
+            .text_atis
+            .as_ref()
+            .map(|v| serde_json::to_string(v).unwrap());
         tx.execute(
             "INSERT INTO controllers (fetch_ts, cid, callsign, facility, rating, frequency, visual_range, \
              text_atis, logon_time, last_updated) \
@@ -106,9 +109,7 @@ pub fn write(
 }
 
 fn is_duplicate_api_update(conn: &Connection, api_update: &str) -> Result<bool> {
-    let mut stmt = conn.prepare_cached(
-        "SELECT 1 FROM fetches WHERE api_update = ?1 LIMIT 1",
-    )?;
+    let mut stmt = conn.prepare_cached("SELECT 1 FROM fetches WHERE api_update = ?1 LIMIT 1")?;
     let exists = stmt.exists(params![api_update])?;
     Ok(exists)
 }
@@ -158,7 +159,13 @@ mod tests {
         let feed: DataFeed = serde_json::from_str(FIXTURE).unwrap();
         let ts = Utc.with_ymd_and_hms(2026, 4, 21, 12, 0, 0).unwrap();
         let outcome = write(&mut conn, data_dir, ts, 42, FIXTURE.as_bytes(), &feed).unwrap();
-        assert_eq!(outcome, WriteOutcome::Written { pilots: 2, controllers: 1 });
+        assert_eq!(
+            outcome,
+            WriteOutcome::Written {
+                pilots: 2,
+                controllers: 1
+            }
+        );
 
         let pilot_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM positions", [], |r| r.get(0))
@@ -186,7 +193,11 @@ mod tests {
         assert!(hash.is_some());
 
         let atis: String = conn
-            .query_row("SELECT text_atis FROM controllers WHERE cid = 7654321", [], |r| r.get(0))
+            .query_row(
+                "SELECT text_atis FROM controllers WHERE cid = 7654321",
+                [],
+                |r| r.get(0),
+            )
             .unwrap();
         assert_eq!(atis, "[\"Line 1\",\"Line 2\"]");
     }
@@ -212,12 +223,18 @@ mod tests {
 
         // Dedupe must short-circuit BEFORE raw_store is called — verify only one raw file exists.
         let raw_files: Vec<_> = walkdir_json_gz(data_dir);
-        assert_eq!(raw_files.len(), 1, "duplicate tick must not write a second raw file");
+        assert_eq!(
+            raw_files.len(),
+            1,
+            "duplicate tick must not write a second raw file"
+        );
     }
 
     fn walkdir_json_gz(root: &std::path::Path) -> Vec<std::path::PathBuf> {
         fn recurse(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
-            let Ok(entries) = std::fs::read_dir(dir) else { return };
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                return;
+            };
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {

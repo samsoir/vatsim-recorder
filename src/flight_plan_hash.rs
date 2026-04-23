@@ -9,9 +9,7 @@ use crate::vatsim::FlightPlan;
 /// hash is stable across runs and Rust versions.
 pub fn hash(plan: &FlightPlan) -> String {
     let mut hasher = Sha1::new();
-    let line = |name: &str, value: Option<&str>| {
-        format!("{}={}\n", name, value.unwrap_or(""))
-    };
+    let line = |name: &str, value: Option<&str>| format!("{}={}\n", name, value.unwrap_or(""));
     hasher.update(line("flight_rules", plan.flight_rules.as_deref()));
     hasher.update(line("aircraft", plan.aircraft.as_deref()));
     hasher.update(line("aircraft_faa", plan.aircraft_faa.as_deref()));
@@ -83,6 +81,9 @@ mod tests {
     fn hash_is_40_lowercase_hex() {
         let h = hash(&plan("KJFK", "EGLL"));
         assert_eq!(h.len(), 40);
-        assert!(h.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        assert!(
+            h.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+        );
     }
 }
