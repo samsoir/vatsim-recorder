@@ -53,3 +53,7 @@ the schema needs to change, you can reprocess every raw file.
 ## Schema
 
 See `docs/specs/2026-04-21-vatsim-recorder-design.md`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
