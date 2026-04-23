@@ -7,9 +7,20 @@ Pond 2026.
 
 ## Build
 
-    cargo build --release
+    make release
 
-The release binary lands at `target/release/vatsim-recorder`.
+The release binary lands at `target/release/vatsim-recorder`. `make help`
+lists every target (build, release, test, smoke, lint, fmt, fmt-check,
+clean, install, uninstall, run-help, stats-help).
+
+## Install
+
+    sudo make install                    # system-wide to /usr/local/bin
+    make install PREFIX=$HOME/.local     # user-local (no sudo)
+
+`PREFIX` (default `/usr/local`) and `DESTDIR` (for staged packaging
+installs) are both honoured. `make uninstall` removes the binary using
+the same `PREFIX`/`DESTDIR` that was used to install it.
 
 ## Run
 
