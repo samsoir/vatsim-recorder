@@ -62,7 +62,7 @@ fn dir_size(path: &Path) -> Result<u64> {
 pub fn render(r: &Report) -> String {
     let human = humanize_bytes(r.disk_bytes);
     format!(
-        "fetches:         {}\nfirst:           {}\nlast:            {}\npeak pilots:     {}\npeak controllers:{}\ndisk:            {} ({} bytes)\n",
+        "fetches:         {}\nfirst:           {}\nlast:            {}\npeak pilots:     {}\npeak controllers: {}\ndisk:            {} ({} bytes)\n",
         r.fetches,
         r.first_ts.as_deref().unwrap_or("-"),
         r.last_ts.as_deref().unwrap_or("-"),
@@ -114,6 +114,7 @@ mod tests {
         assert_eq!(r.peak_pilots, 2);
         assert_eq!(r.peak_controllers, 1);
         assert_eq!(r.first_ts.as_deref(), Some("2026-04-21T12:00:00Z"));
+        assert_eq!(r.last_ts.as_deref(), Some("2026-04-21T12:00:00Z"));
 
         let out = render(&r);
         assert!(out.contains("fetches:         1"));
