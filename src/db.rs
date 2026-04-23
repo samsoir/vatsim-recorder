@@ -72,6 +72,13 @@ pub fn open(path: &Path) -> Result<Connection> {
     }
     let conn = Connection::open(path)?;
     conn.pragma_update(None, "journal_mode", "WAL")?;
+    let journal_mode: String = conn.query_row("PRAGMA journal_mode", [], |r| r.get(0))?;
+    if !journal_mode.eq_ignore_ascii_case("wal") {
+        anyhow::bail!(
+            "failed to enable WAL mode (SQLite reported {journal_mode:?}); \
+             ensure the database file's filesystem supports WAL"
+        );
+    }
     conn.pragma_update(None, "synchronous", "NORMAL")?;
     conn.pragma_update(None, "foreign_keys", "OFF")?;
     conn.execute_batch(SCHEMA)?;
