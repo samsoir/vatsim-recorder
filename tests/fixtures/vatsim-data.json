@@ -1,0 +1,89 @@
+{
+  "general": {
+    "version": 3,
+    "reload": 1,
+    "update": "20260421120000",
+    "update_timestamp": "2026-04-21T12:00:00.0000000Z",
+    "connected_clients": 3,
+    "unique_users": 3
+  },
+  "pilots": [
+    {
+      "cid": 1234567,
+      "name": "Test Pilot KJFK",
+      "callsign": "AAL123",
+      "server": "USA-EAST",
+      "pilot_rating": 0,
+      "military_rating": 0,
+      "latitude": 40.6413,
+      "longitude": -73.7781,
+      "altitude": 15000,
+      "groundspeed": 250,
+      "transponder": "2200",
+      "heading": 90,
+      "qnh_i_hg": 29.92,
+      "qnh_mb": 1013,
+      "flight_plan": {
+        "flight_rules": "I",
+        "aircraft": "B738/L-SDE2E3FGHIRWY/LB1",
+        "aircraft_faa": "H/B738/L",
+        "aircraft_short": "B738",
+        "departure": "KJFK",
+        "arrival": "EGLL",
+        "alternate": "EGKK",
+        "cruise_tas": "450",
+        "altitude": "FL360",
+        "deptime": "1200",
+        "enroute_time": "0700",
+        "fuel_time": "0830",
+        "remarks": "PBN/A1B1C1D1",
+        "route": "DCT MERIT",
+        "revision_id": 0,
+        "assigned_transponder": "2200"
+      },
+      "logon_time": "2026-04-21T10:00:00.0000000Z",
+      "last_updated": "2026-04-21T12:00:00.0000000Z"
+    },
+    {
+      "cid": 2345678,
+      "name": "Another Pilot",
+      "callsign": "BAW456",
+      "server": "EUROPE-CW",
+      "pilot_rating": 0,
+      "military_rating": 0,
+      "latitude": 51.47,
+      "longitude": -0.4543,
+      "altitude": 0,
+      "groundspeed": 0,
+      "transponder": "0000",
+      "heading": 270,
+      "qnh_i_hg": 30.10,
+      "qnh_mb": 1020,
+      "flight_plan": null,
+      "logon_time": "2026-04-21T11:30:00.0000000Z",
+      "last_updated": "2026-04-21T12:00:00.0000000Z"
+    }
+  ],
+  "controllers": [
+    {
+      "cid": 7654321,
+      "name": "Test Controller",
+      "callsign": "EGLL_S_TWR",
+      "frequency": "118.500",
+      "facility": 4,
+      "rating": 5,
+      "server": "EUROPE-CW",
+      "visual_range": 50,
+      "text_atis": ["Line 1", "Line 2"],
+      "last_updated": "2026-04-21T12:00:00.0000000Z",
+      "logon_time": "2026-04-21T10:00:00.0000000Z"
+    }
+  ],
+  "atis": [],
+  "servers": [],
+  "prefiles": [],
+  "facilities": [],
+  "ratings": [],
+  "pilot_ratings": [],
+  "military_ratings": []
+}
