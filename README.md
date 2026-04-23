@@ -1,8 +1,9 @@
 # vatsim-recorder
 
-Polls the VATSIM data feed every 60 s and writes a time series of aircraft and
-controller state to SQLite, with raw gzipped JSON snapshots preserved on disk.
-Built to record Cross the Pond 2026.
+Polls the VATSIM data feed every 60 s (configurable down to the feed's own 15 s
+cache TTL) and writes a time series of aircraft and controller state to SQLite,
+with raw gzipped JSON snapshots preserved on disk. Built to record Cross the
+Pond 2026.
 
 ## Build
 
@@ -16,7 +17,8 @@ The release binary lands at `target/release/vatsim-recorder`.
 
 Accepted flags:
 
-- `--interval-secs N` (default: 60, minimum: 60). Anything lower is rejected.
+- `--interval-secs N` (default: 60, minimum: 15). The floor matches the
+  VATSIM v3 feed's advertised cache TTL; polling faster returns duplicates.
 - `--status-url URL` override the VATSIM status endpoint (testing).
 - `--data-url URL` override the fallback data endpoint (testing).
 

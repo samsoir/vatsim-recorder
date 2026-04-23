@@ -8,4 +8,10 @@ pub struct RunConfig {
     pub data_url: String,
 }
 
-pub const MIN_INTERVAL_SECS: u64 = 60;
+/// Default poll cadence if the user does not specify `--interval-secs`.
+pub const DEFAULT_INTERVAL_SECS: u64 = 60;
+
+/// Hard floor on the poll cadence. Matches the VATSIM v3 feed's advertised
+/// cache TTL (~15 s); polling faster would only return duplicates (which the
+/// writer already dedupes on `api_update`) and begin to look like abuse.
+pub const MIN_INTERVAL_SECS: u64 = 15;

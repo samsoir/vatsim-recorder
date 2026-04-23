@@ -2,7 +2,7 @@ use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-use crate::config::{MIN_INTERVAL_SECS, RunConfig};
+use crate::config::{DEFAULT_INTERVAL_SECS, MIN_INTERVAL_SECS, RunConfig};
 use crate::fetcher::{DEFAULT_DATA_URL, DEFAULT_STATUS_URL};
 
 #[derive(Debug, Parser)]
@@ -24,7 +24,7 @@ pub enum Command {
 pub struct RunArgs {
     #[arg(long)]
     pub data_dir: PathBuf,
-    #[arg(long, default_value_t = MIN_INTERVAL_SECS)]
+    #[arg(long, default_value_t = DEFAULT_INTERVAL_SECS)]
     pub interval_secs: u64,
     #[arg(long, default_value = DEFAULT_STATUS_URL)]
     pub status_url: String,
@@ -52,7 +52,7 @@ pub async fn run() -> Result<()> {
 pub fn build_run_config(args: RunArgs) -> Result<RunConfig> {
     if args.interval_secs < MIN_INTERVAL_SECS {
         bail!(
-            "--interval-secs must be at least {} (good-neighbour policy); got {}",
+            "--interval-secs must be at least {} (VATSIM feed cache TTL); got {}",
             MIN_INTERVAL_SECS,
             args.interval_secs
         );
@@ -77,13 +77,13 @@ mod tests {
         let dir = tempdir().unwrap();
         let err = build_run_config(RunArgs {
             data_dir: dir.path().to_path_buf(),
-            interval_secs: 30,
+            interval_secs: 10,
             status_url: DEFAULT_STATUS_URL.into(),
             data_url: DEFAULT_DATA_URL.into(),
         })
         .unwrap_err();
         let msg = format!("{err}");
-        assert!(msg.contains("at least 60"), "unexpected message: {msg}");
+        assert!(msg.contains("at least 15"), "unexpected message: {msg}");
     }
 
     #[test]
@@ -91,7 +91,20 @@ mod tests {
         let dir = tempdir().unwrap();
         let cfg = build_run_config(RunArgs {
             data_dir: dir.path().to_path_buf(),
-            interval_secs: 60,
+            interval_secs: 15,
+            status_url: DEFAULT_STATUS_URL.into(),
+            data_url: DEFAULT_DATA_URL.into(),
+        })
+        .unwrap();
+        assert_eq!(cfg.interval_secs, 15);
+    }
+
+    #[test]
+    fn accepts_default_interval() {
+        let dir = tempdir().unwrap();
+        let cfg = build_run_config(RunArgs {
+            data_dir: dir.path().to_path_buf(),
+            interval_secs: DEFAULT_INTERVAL_SECS,
             status_url: DEFAULT_STATUS_URL.into(),
             data_url: DEFAULT_DATA_URL.into(),
         })
