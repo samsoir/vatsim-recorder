@@ -64,7 +64,13 @@ mod tests {
     }
 
     #[test]
-    fn same_input_same_hash() {
+    fn hash_is_stable() {
+        // Pinned expected hash for `plan("KJFK", "EGLL")`.
+        // If this changes, the flight_plans dedup invariant is broken —
+        // existing plans would be treated as new after a restart.
+        const EXPECTED: &str = "b63c86b1652a5ca8789fa81088176d0d206993f9";
+        assert_eq!(hash(&plan("KJFK", "EGLL")), EXPECTED);
+        // Also check determinism within one run.
         assert_eq!(hash(&plan("KJFK", "EGLL")), hash(&plan("KJFK", "EGLL")));
     }
 
