@@ -69,8 +69,12 @@ async fn one_tick(
     ) {
         Ok(o) => o,
         Err(e) => {
-            // If the raw body parsed but the DB write failed, preserve the raw
-            // with a parse-error suffix so it can still be reprocessed.
+            // writer::write failed — either the raw-first write never landed, or the
+            // SQL transaction aborted after the `.json.gz` was already on disk.
+            // Best-effort: write the body with a `.parse-error` suffix so a post-event
+            // inspector sees a distinctive filename near the failure. In the DB-failure
+            // sub-case this produces a second file for the same fetch_ts alongside
+            // the existing `.json.gz` — intentional; no data is lost.
             let _ = raw_store::write_snapshot(data_dir, fetch.fetch_ts, &fetch.raw, Suffix::ParseError);
             error!(error = %e, "writer failed");
             return Ok(());
