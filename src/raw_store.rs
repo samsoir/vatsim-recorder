@@ -22,11 +22,14 @@ pub fn write_snapshot(
     }
     let file = File::create(&abs).with_context(|| format!("create {}", abs.display()))?;
     let mut enc = GzEncoder::new(file, Compression::default());
-    enc.write_all(raw_body)?;
-    enc.finish()?;
+    enc.write_all(raw_body)
+        .with_context(|| format!("write gzip body to {}", abs.display()))?;
+    enc.finish()
+        .with_context(|| format!("finish gzip stream for {}", abs.display()))?;
     Ok(rel)
 }
 
+#[derive(Debug)]
 pub enum Suffix {
     Ok,
     ParseError,
