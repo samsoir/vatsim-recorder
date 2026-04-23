@@ -209,5 +209,26 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM fetches", [], |r| r.get(0))
             .unwrap();
         assert_eq!(fetch_count, 1);
+
+        // Dedupe must short-circuit BEFORE raw_store is called — verify only one raw file exists.
+        let raw_files: Vec<_> = walkdir_json_gz(data_dir);
+        assert_eq!(raw_files.len(), 1, "duplicate tick must not write a second raw file");
+    }
+
+    fn walkdir_json_gz(root: &std::path::Path) -> Vec<std::path::PathBuf> {
+        fn recurse(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+            let Ok(entries) = std::fs::read_dir(dir) else { return };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    recurse(&path, out);
+                } else if path.extension().and_then(|s| s.to_str()) == Some("gz") {
+                    out.push(path);
+                }
+            }
+        }
+        let mut out = Vec::new();
+        recurse(root, &mut out);
+        out
     }
 }
